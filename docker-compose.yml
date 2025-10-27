@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  tts-service:
+    build: ./tts-service
+    ports:
+      - "8082:8082"
+    volumes:
+      - models_tts:/opt/models
+      - logs:/var/log/app
+    environment:
+      - MODEL_PATH=/opt/models/en_US-lessac-medium.onnx
+      - HOST=0.0.0.0
+      - PORT=8082
+    networks:
+      - speech_net
+
+  asr-service:
+    build: ./asr-service
+    ports:
+      - "8081:8081"
+    volumes:
+      - models_asr:/opt/models
+      - logs:/var/log/app
+    environment:
+      - MODEL_SIZE=base
+      - HOST=0.0.0.0
+      - PORT=8081
+    networks:
+      - speech_net
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - logs:/var/log/app
+    environment:
+      - TTS_SERVICE_URL=ws://tts-service:8082/ws/tts
+      - ASR_SERVICE_URL=http://asr-service:8081/api/stt/bytes
+      - HOST=0.0.0.0
+      - PORT=8000
+    depends_on:
+      - tts-service
+      - asr-service
+    networks:
+      - speech_net
+
+volumes:
+  models_tts:
+  models_asr:
+  logs:
+
+networks:
+  speech_net:
+    driver: bridge
